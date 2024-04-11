@@ -1,4 +1,4 @@
-# Juego del Ahorcado
+# Juego de El Ahorcado
 Este es el **juego** de **El Ahorcado** desarrollado en **Python** utilizando **Tkinter**.
 ## Descripción
 Este juego de El Ahorcado te desafía a **adivinar** una **palabra oculta** antes de que se agoten tus **intentos**. Tienes **8 oportunidades** para adivinar la palabra correcta. Cada vez que **adivinas** una **letra correctamente**, **ganas puntos**. Pero cuidado, cada **letra incorrecta** te **resta puntos**. **¡Buena suerte!**  
