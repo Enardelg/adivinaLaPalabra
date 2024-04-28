@@ -36,7 +36,6 @@ class JuegoAhorcado:
         self.sistema_clasificacion = SistemaClasificacion()
         # Cargar las puntuaciones guardadas
         self.sistema_clasificacion.cargar_puntuaciones()
-        self.categorias_palabras_backup = None  # Variable para almacenar una copia de seguridad de las categorías y palabras originales
 
         self.configurar_interfaz()
 
@@ -49,7 +48,7 @@ class JuegoAhorcado:
         self.tiempo_inicio = time.time()
         self.tiempo_transcurrido_total = 0
         self.tiempo_limite = 60  # Tiempo límite en segundos
-        self.actualizar_tiempo()
+        self.actualizar_tiempo()  # Llamar a la función de actualización del tiempo inicialmente
 
     def inicializar_ventana(self):
         self.master.title("El Ahorcado")
@@ -271,7 +270,15 @@ class JuegoAhorcado:
                 self.mostrar_clasificacion()  # Mostrar la tabla de clasificación cuando el jugador ha ganado puntos
         # Reinicia la puntuación y el juego
         self.puntos = 0
-        self.reiniciar_juego()
+
+        # Cierra la ventana del juego actual
+        self.master.destroy()
+
+        # Crea una nueva ventana de selección de modo de juego
+        root = tk.Tk()
+        from juego_ahorcado.seleccion_modo import SeleccionModo
+        SeleccionModo(root)
+        root.mainloop()
 
     def ganar(self):
         """
