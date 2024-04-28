@@ -13,7 +13,7 @@ class NombreDialog(tk.simpledialog.Dialog):
         Returns:
             tk.Entry: El widget de entrada donde el usuario ingresará su nombre.
         """
-        tk.Label(master, text="Nombre:").grid(row=0)
+        tk.Label(master, text="Introduce tu nombre:").grid(row=0)
         self.entry = tk.Entry(master)
         self.entry.grid(row=0, column=1)
         return self.entry

@@ -1,3 +1,4 @@
+import copy
 import random
 import time
 import tkinter as tk
@@ -7,7 +8,7 @@ import unidecode
 
 from juego_ahorcado.clasificacion import SistemaClasificacion
 from juego_ahorcado.dialogo_nombre import NombreDialog
-from juego_ahorcado.palabras import CATEGORIAS_PALABRAS
+from juego_ahorcado.palabras import CATEGORIAS_PALABRAS, CATEGORIAS_PALABRAS_ORIGINALES
 
 
 class JuegoAhorcado:
@@ -35,6 +36,7 @@ class JuegoAhorcado:
         self.sistema_clasificacion = SistemaClasificacion()
         # Cargar las puntuaciones guardadas
         self.sistema_clasificacion.cargar_puntuaciones()
+        self.categorias_palabras_backup = None  # Variable para almacenar una copia de seguridad de las categorías y palabras originales
 
         self.configurar_interfaz()
 
@@ -46,6 +48,7 @@ class JuegoAhorcado:
         # Iniciar contador de tiempo
         self.tiempo_inicio = time.time()
         self.tiempo_transcurrido_total = 0
+        self.tiempo_limite = 60  # Tiempo límite en segundos
         self.actualizar_tiempo()
 
     def inicializar_ventana(self):
@@ -147,8 +150,12 @@ class JuegoAhorcado:
         """
         palabra_oculta = ""  # Inicializa una cadena vacía para la palabra oculta
         for letra in self.palabra_secreta:  # Itera sobre cada letra de la palabra secreta
-            letra_normalizada = unidecode.unidecode(letra)  # Normaliza la letra para manejar caracteres especiales
-            if letra_normalizada in [unidecode.unidecode(l) for l in self.letras_adivinadas]:  # Comprueba si la letra ha sido adivinada
+            if letra == "Ñ":  # Si la letra es "Ñ", verifica si "Ñ" está adivinada
+                if "Ñ" in self.letras_adivinadas:
+                    palabra_oculta += letra
+                else:
+                    palabra_oculta += "_"  # Si "Ñ" no está adivinada, muestra un guion bajo
+            elif letra in self.letras_adivinadas or unidecode.unidecode(letra) in self.letras_adivinadas:  # Comprueba si la letra ha sido adivinada
                 palabra_oculta += letra  # Si la letra ha sido adivinada, la agrega a la palabra oculta
             else:
                 if letra == " ":  # Si la letra es un espacio, agrega un espacio a la palabra oculta
@@ -166,43 +173,47 @@ class JuegoAhorcado:
         Parameters:
             letra (str): La letra que el jugador intenta adivinar.
         """
-        letra_original = letra  # Conserva la letra original antes de normalizarla
         letras_secretas = self.palabra_secreta  # Lista de letras de la palabra secreta
-
-        # Normalizar la letra antes de compararla
-        letra = unidecode.unidecode(letra) if letra != "Ñ" else letra
 
         if letra in letras_secretas:
             # Si la letra está en la palabra secreta, se agrega a las letras adivinadas, se suma 1 punto y se actualiza la interfaz
-            self.letras_adivinadas.append(letra_original)
-            self.puntos += 1
-        else:
-            # Si la letra no está en la palabra secreta, se agrega a las letras falladas, se incrementa el contador de fallos
-            # y se acumulan los puntos de los fallos
-            self.letras_falladas.append(letra_original)
-            self.fallos += 1
-            self.acumular_puntos_fallos += 3
+            self.letras_adivinadas.append(letra)
 
-        self.actualizar_interfaz()
+            # Sumar puntos adicionales por cada aparición de la letra en la palabra secreta
+            puntos_adicionales = letras_secretas.count(letra)
+            self.puntos += puntos_adicionales
+        else:
+            letra_original = letra  # Conserva la letra original antes de normalizarla
+            # Normaliza la letra y las letras de la palabra secreta
+            letra_normalizada = unidecode.unidecode(letra_original)
+            letras_secretas_normalizadas = [unidecode.unidecode(l) for l in letras_secretas]
+
+            # Si la letra es "Ñ" o su versión normalizada no está en las letras secretas normalizadas:
+            if letra == "Ñ" or letra_normalizada not in letras_secretas_normalizadas:
+                self.letras_falladas.append(letra)
+                self.fallos += 1
+                self.acumular_puntos_fallos += 3
 
         # Desactivar el botón presionado
         for boton in self.botones_teclado:
-            if boton["text"] == letra_original:
+            if boton["text"] == letra:
                 boton.config(state="disabled", bg="lightgray")  # Desactiva el botón y cambia el color de fondo
 
-        letras_adivinadas_y_variantes = set(self.letras_adivinadas)
-        letras_adivinadas_y_variantes.update(["Á", "É", "Í", "Ó", "Ú"])  # Agregar las variantes con tilde
-
-        # Comprobar si la letra con tilde está en la palabra secreta y no está en las letras adivinadas,
-        # en ese caso, se agrega a las letras adivinadas
+        # Verifica si la letra actual es una vocal sin tilde (A, E, I, O, U).
+        # Si la letra con tilde (l) es igual a la letra actual y aún no ha sido adivinada,
+        # la agrega a las letras adivinadas para mostrarla correctamente en la palabra oculta.
         for l in letras_secretas:
-            if unidecode.unidecode(l) == letra and l not in self.letras_adivinadas:
-                self.letras_adivinadas.append(l)
+            if letra in ["A", "E", "I", "O", "U"]:
+                if unidecode.unidecode(l) == letra and l not in self.letras_adivinadas:
+                    self.letras_adivinadas.append(l)
+                    self.puntos += 1
+
+        self.actualizar_interfaz()
 
         # Comprobar si el jugador ha perdido o ganado después de cada intento
         if self.fallos == 8:
             self.perder()  # Llama a la función para manejar la situación de perder
-        elif all(l in letras_adivinadas_y_variantes or l == " " or l == "-" for l in self.palabra_secreta):
+        elif all(l in self.letras_adivinadas or l == " " or l == "-" for l in self.palabra_secreta):
             self.ganar()  # Llama a la función para manejar la situación de ganar
 
     def actualizar_interfaz(self):
@@ -223,29 +234,44 @@ class JuegoAhorcado:
         Maneja las acciones cuando el jugador pierde el juego.
         """
         self.tiempo_inicio = None  # Detener el tiempo
-        # Muestra un mensaje indicando que el jugador perdió y su puntuación
         total_puntos = self.puntos - self.acumular_puntos_fallos
-        if self.tiempo_transcurrido_total >= 60 and total_puntos <= 0:
+
+        # Muestra un mensaje indicando que el jugador perdió y su puntuación
+        if self.tiempo_transcurrido_total >= 10 and total_puntos <= 0:
             self.puntos = 0
+            # Actualiza la interfaz gráfica
+            self.actualizar_interfaz()
             messagebox.showinfo("¡Perdiste!", f"Fin del juego\nSe ha agotado el tiempo\n"f"No has conseguido ningún punto...")
-        if self.tiempo_transcurrido_total >= 60 and total_puntos > 0:
+        elif self.tiempo_transcurrido_total >= 10 and total_puntos > 0:
             # Si el jugador tenía puntos, se resta la acumulación de puntos por fallos de su puntuación total y se muestra un mensaje
             self.puntos -= self.acumular_puntos_fallos
+            # Actualiza la interfaz gráfica
+            self.actualizar_interfaz()
             messagebox.showinfo("¡Perdiste!", f"Fin del juego\nSe ha agotado el tiempo\n"f"Has conseguido un total de: ¡{self.puntos} puntos!")
         elif total_puntos <= 0 < self.fallos >= 8:
             self.puntos = 0
+            # Actualiza la interfaz gráfica
+            self.actualizar_interfaz()
             messagebox.showinfo("¡Perdiste!", f"Fin del juego\nHas superado los fallos permitidos\nNo has conseguido ningún punto...")
-        else:
+        elif total_puntos > 0 < self.fallos >= 8:
             # Si el jugador tenía puntos, se resta la acumulación de puntos por fallos de su puntuación total y se muestra un mensaje
             self.puntos -= self.acumular_puntos_fallos
+            # Actualiza la interfaz gráfica
+            self.actualizar_interfaz()
             messagebox.showinfo("¡Perdiste!", f"Fin del juego\nHas superado los fallos permitidos\nHas conseguido un total de: ¡{self.puntos} puntos!")
 
         if self.puntos > 0:
-            self.guardar_puntuacion()  # Guardar la puntuación cuando el jugador gana puntos
-            self.mostrar_clasificacion()  # Mostrar la tabla de clasificación cuando el jugador ha ganado puntos
+            if self.sistema_clasificacion.puntuaciones:
+                puntajes_actuales = [puntuacion for _, puntuacion in self.sistema_clasificacion.obtener_clasificacion()]
+                peor_puntaje = min(puntajes_actuales)
+                if self.puntos > peor_puntaje or len(puntajes_actuales) < self.sistema_clasificacion.max_puntuaciones:
+                    self.guardar_puntuacion()  # Guardar la puntuación cuando el jugador gana puntos
+                else:
+                    messagebox.showinfo("¡Puntos insuficientes!", "No tienes suficientes puntos para entrar en el top 10.")
+                self.mostrar_clasificacion()  # Mostrar la tabla de clasificación cuando el jugador ha ganado puntos
         # Reinicia la puntuación y el juego
         self.puntos = 0
-        self.reset_juego()
+        self.reiniciar_juego()
 
     def ganar(self):
         """
@@ -253,11 +279,13 @@ class JuegoAhorcado:
         """
         self.tiempo_inicio = None  # Detener el tiempo
         # Calcula los puntos ganados por el jugador
-        self.puntos += 50 + (60 - self.tiempo_transcurrido_total) - self.acumular_puntos_fallos
+        self.puntos += 50 + (self.tiempo_limite - self.tiempo_transcurrido_total) - self.acumular_puntos_fallos
+        # Actualiza la interfaz gráfica
+        self.actualizar_interfaz()
         # Muestra un mensaje de felicitación al jugador
         messagebox.showinfo("¡Felicidades!", f"¡Correcto, a por la siguiente palabra!")
         # Reinicia el juego
-        self.reset_juego()
+        self.continuar_juego()
 
     def restaurar_botones(self):
         """
@@ -266,20 +294,73 @@ class JuegoAhorcado:
         for boton in self.botones_teclado:
             boton.config(state="normal", bg="SystemButtonFace")
 
-    def reset_juego(self):
+    def continuar_juego(self):
         """
-        Reinicia el juego con una nueva palabra secreta y restablece los atributos del juego.
+        Continúa el juego con una nueva palabra secreta y restablece los atributos del juego.
         """
-        self.categoria_actual, self.palabra_secreta = self.elegir_palabra()
+        # Convierte la primera letra de cada palabra de la palabra secreta en mayúscula
+        palabras_secreta_lista = self.palabra_secreta.split()
+        palabras_secreta_minuscula = [palabra[0].upper() + palabra[1:].lower() for palabra in palabras_secreta_lista]
+        palabra_secreta_minuscula = " ".join(palabras_secreta_minuscula)
+        # Elimina la palabra acertada del diccionario de categorías
+        try:
+            CATEGORIAS_PALABRAS[self.categoria_actual].remove(palabra_secreta_minuscula)
+            # Si no hay más palabras en la categoría, elimina la categoría del diccionario
+            if not CATEGORIAS_PALABRAS[self.categoria_actual]:
+                del CATEGORIAS_PALABRAS[self.categoria_actual]
+            if not CATEGORIAS_PALABRAS:
+                messagebox.showinfo("Fin del juego", "¡Todas las palabras se han agotado! Gracias por jugar.")
+                if self.sistema_clasificacion.puntuaciones:
+                    puntajes_actuales = [puntuacion for _, puntuacion in self.sistema_clasificacion.obtener_clasificacion()]
+                    peor_puntaje = min(puntajes_actuales)
+                    if self.puntos > peor_puntaje or len(puntajes_actuales) < self.sistema_clasificacion.max_puntuaciones:
+                        self.guardar_puntuacion()  # Guardar la puntuación cuando el jugador gana puntos
+                    else:
+                        messagebox.showinfo("¡Puntos insuficientes!", "No tienes suficientes puntos para entrar en el top 10.")
+                    self.mostrar_clasificacion()  # Mostrar la tabla de clasificación cuando el jugador ha ganado puntos
+                self.reiniciar_juego()
+                return  # Sale del método si no quedan palabras en ninguna categoría
+        except ValueError:
+            print("La palabra no está en la lista.")
+
         self.letras_adivinadas = []
         self.letras_falladas = []
         self.fallos = 0
         self.acumular_puntos_fallos = 0
-        self.actualizar_interfaz()
         self.tiempo_inicio = time.time()
+        self.categoria_actual, self.palabra_secreta = self.elegir_palabra()
+        self.actualizar_interfaz()
         self.restaurar_botones()
         # Actualiza la etiqueta de la categoría con la nueva categoría seleccionada
         self.label_categoria.config(text="Categoría - " + self.categoria_actual)
+
+    def reiniciar_juego(self):
+        """
+        Reinicia el juego con todas las palabras y categorías nuevamente.
+        """
+        # Reinicia los atributos del juego
+        self.letras_adivinadas = []
+        self.letras_falladas = []
+        self.fallos = 0
+        self.puntos = 0
+        self.acumular_puntos_fallos = 0
+        # Reinicia el sistema de clasificación
+        self.sistema_clasificacion = SistemaClasificacion()
+        # Cargar las puntuaciones guardadas
+        self.sistema_clasificacion.cargar_puntuaciones()
+        # Reinicia el tiempo
+        self.tiempo_inicio = time.time()
+        # Copia profunda de las categorías y palabras originales
+        categorias_palabras_originales_copia = copy.deepcopy(CATEGORIAS_PALABRAS_ORIGINALES)
+        # Copia las categorías y palabras originales de vuelta a CATEGORIAS_PALABRAS
+        CATEGORIAS_PALABRAS.clear()
+        CATEGORIAS_PALABRAS.update(categorias_palabras_originales_copia)
+        # Elige una nueva palabra secreta
+        self.categoria_actual, self.palabra_secreta = self.elegir_palabra()
+        # Actualiza la interfaz gráfica
+        self.actualizar_interfaz()
+        # Restaura los botones del teclado
+        self.restaurar_botones()
 
     def actualizar_tiempo(self):
         """
@@ -293,7 +374,7 @@ class JuegoAhorcado:
             tiempo_transcurrido = self.tiempo_transcurrido_total  # Si el juego ha terminado, utiliza el tiempo total
 
         # Calcula el tiempo restante y lo muestra en el formato "minutos:segundos"
-        tiempo_restante = max(0, 60 - tiempo_transcurrido)
+        tiempo_restante = max(0, self.tiempo_limite - tiempo_transcurrido)
         minutos = tiempo_restante // 60
         segundos = tiempo_restante % 60
         self.label_tiempo.config(text=f"Tiempo: {minutos}:{segundos:02d}")
