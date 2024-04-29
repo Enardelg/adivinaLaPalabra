@@ -12,10 +12,7 @@ from juego_ahorcado.palabras import CATEGORIAS_PALABRAS, CATEGORIAS_PALABRAS_ORI
 
 
 class JuegoAhorcado:
-    """
-    Clase para el juego del ahorcado.
-    """
-    def __init__(self, master):
+    def __init__(self, master, con_tiempo):
         """
         Inicializa la ventana del juego y los atributos del juego.
 
@@ -26,6 +23,7 @@ class JuegoAhorcado:
         self.inicializar_ventana()
 
         self.mostrado_bienvenida = False  # Bandera para controlar si se ha mostrado el mensaje de bienvenida
+        self.con_tiempo = con_tiempo
         self.categoria_actual, self.palabra_secreta = self.elegir_palabra()  # Selecciona una palabra al azar para el juego
         self.letras_adivinadas = []  # Lista para almacenar las letras que han sido adivinadas correctamente
         self.letras_falladas = []  # Lista para almacenar las letras que han sido incorrectamente propuestas
@@ -44,11 +42,16 @@ class JuegoAhorcado:
             self.mostrar_mensaje_bienvenida()
             self.mostrado_bienvenida = True
 
-        # Iniciar contador de tiempo
-        self.tiempo_inicio = time.time()
-        self.tiempo_transcurrido_total = 0
-        self.tiempo_limite = 60  # Tiempo límite en segundos
-        self.actualizar_tiempo()  # Llamar a la función de actualización del tiempo inicialmente
+        if self.con_tiempo:
+            # Iniciar contador de tiempo
+            self.tiempo_inicio = time.time()
+            self.tiempo_transcurrido_total = 0
+            self.tiempo_limite = 60  # Tiempo límite en segundos
+            self.actualizar_tiempo()  # Llamar a la función de actualización del tiempo inicialmente
+        else:
+            # Sin tiempo estrablecer a 0 para no sumar puntos extra al acertar las palabras
+            self.tiempo_transcurrido_total = 0
+            self.tiempo_limite = 0
 
     def inicializar_ventana(self):
         self.master.title("El Ahorcado")
@@ -86,9 +89,10 @@ class JuegoAhorcado:
         self.label_puntos = tk.Label(self.master, text=f"Puntos: {self.puntos}")
         self.label_puntos.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-        # Etiqueta para mostrar el tiempo transcurrido
-        self.label_tiempo = tk.Label(self.master, text="Tiempo: 1:00")
-        self.label_tiempo.grid(row=0, column=3, padx=10, pady=10, sticky="e")
+        if self.con_tiempo:
+            # Etiqueta para mostrar el tiempo transcurrido
+            self.label_tiempo = tk.Label(self.master, text="Tiempo: 1:00")
+            self.label_tiempo.grid(row=0, column=3, padx=10, pady=10, sticky="e")
 
         # Frame para los botones del teclado
         self.frame_teclado = tk.Frame(self.master)
@@ -106,7 +110,7 @@ class JuegoAhorcado:
     def guardar_puntuacion(self):
         nombre_jugador = self.obtener_nombre_jugador()
         if nombre_jugador is not None:  # Verifica si se proporcionó un nombre
-            self.sistema_clasificacion.agregar_puntuacion(nombre_jugador, self.puntos)
+            self.sistema_clasificacion.agregar_puntuacion(nombre_jugador, self.puntos, self.con_tiempo)
             self.sistema_clasificacion.guardar_puntuaciones()
 
     def obtener_nombre_jugador(self):
@@ -114,7 +118,7 @@ class JuegoAhorcado:
         return dialog.result  # Devuelve el resultado después de que se cierra el diálogo
 
     def mostrar_clasificacion(self):
-        clasificacion = self.sistema_clasificacion.obtener_clasificacion()
+        clasificacion = self.sistema_clasificacion.obtener_clasificacion(self.con_tiempo)
         clasificacion_str = "\n".join(f"{i + 1}. {nombre}: {puntos}" for i, (nombre, puntos) in enumerate(clasificacion))
         messagebox.showinfo("Tabla de Clasificación", f"Tabla de Clasificación:\n{clasificacion_str}")
 
@@ -122,9 +126,14 @@ class JuegoAhorcado:
         """
         Muestra un mensaje de bienvenida cuando se inicia el juego.
         """
-        messagebox.showinfo("¡Bienvenido!",
-                            "Dispones de 8 fallos y 1 minuto para resolver cada palabra.\nLetra acertada suma 1 punto.\nTexto resuelto suma 50 puntos.\n"
-                            "+1 punto por segundo restante.\n-3 puntos por fallo.")
+        if self.con_tiempo:
+            messagebox.showinfo("¡Bienvenido!",
+                                "Dispones de 8 fallos y 1 minuto para resolver cada palabra.\nLetra acertada suma 1 punto."
+                                "\nTexto resuelto suma 50 puntos.\n+1 punto por segundo restante.\n-3 puntos por fallo.")
+        else:
+            messagebox.showinfo("¡Bienvenido!",
+                                "Dispones de 8 fallos.\nLetra acertada suma 1 punto.\nTexto resuelto suma 50 puntos."
+                                "\n-3 puntos por fallo.")
 
     def elegir_palabra(self):
         """
@@ -260,14 +269,18 @@ class JuegoAhorcado:
             messagebox.showinfo("¡Perdiste!", f"Fin del juego\nHas superado los fallos permitidos\nHas conseguido un total de: ¡{self.puntos} puntos!")
 
         if self.puntos > 0:
-            if self.sistema_clasificacion.puntuaciones:
-                puntajes_actuales = [puntuacion for _, puntuacion in self.sistema_clasificacion.obtener_clasificacion()]
+            clasificacion = self.sistema_clasificacion.obtener_clasificacion(self.con_tiempo)
+            if clasificacion:
+                puntajes_actuales = [puntuacion for _, puntuacion in self.sistema_clasificacion.obtener_clasificacion(self.con_tiempo)]
                 peor_puntaje = min(puntajes_actuales)
                 if self.puntos > peor_puntaje or len(puntajes_actuales) < self.sistema_clasificacion.max_puntuaciones:
                     self.guardar_puntuacion()  # Guardar la puntuación cuando el jugador gana puntos
                 else:
                     messagebox.showinfo("¡Puntos insuficientes!", "No tienes suficientes puntos para entrar en el top 10.")
                 self.mostrar_clasificacion()  # Mostrar la tabla de clasificación cuando el jugador ha ganado puntos
+            else:
+                self.guardar_puntuacion()  # Guarda la puntuación cuando no hay ninguna puntuación en la clasificación
+                self.mostrar_clasificacion()  # Muestra la tabla de clasificación vacía
         # Reinicia la puntuación y el juego
         self.puntos = 0
 
@@ -317,8 +330,8 @@ class JuegoAhorcado:
                 del CATEGORIAS_PALABRAS[self.categoria_actual]
             if not CATEGORIAS_PALABRAS:
                 messagebox.showinfo("Fin del juego", "¡Todas las palabras se han agotado! Gracias por jugar.")
-                if self.sistema_clasificacion.puntuaciones:
-                    puntajes_actuales = [puntuacion for _, puntuacion in self.sistema_clasificacion.obtener_clasificacion()]
+                if self.sistema_clasificacion.puntuaciones_con_tiempo:
+                    puntajes_actuales = [puntuacion for _, puntuacion in self.sistema_clasificacion.obtener_clasificacion(self.con_tiempo)]
                     peor_puntaje = min(puntajes_actuales)
                     if self.puntos > peor_puntaje or len(puntajes_actuales) < self.sistema_clasificacion.max_puntuaciones:
                         self.guardar_puntuacion()  # Guardar la puntuación cuando el jugador gana puntos
