@@ -18,6 +18,7 @@ class JuegoAhorcado:
 
         Parameters:
             master (Tk): La ventana principal del juego.
+            con_tiempo (bool): Indica el juego con tiempo (True) o sin tiempo (False).
         """
         self.master = master  # Establece la ventana principal del juego
         self.inicializar_ventana()
@@ -100,12 +101,26 @@ class JuegoAhorcado:
 
         self.botones_teclado = []  # Lista para almacenar los botones del teclado
         letras = ["QWERTYUIOP", "ASDFGHJKLÑ", "ZXCVBNM"]
+        self.teclas_botones = {}  # Diccionario para asociar teclas con botones
         for i, linea in enumerate(letras):
             for j, letra in enumerate(linea):
                 # Crea un botón para cada letra del teclado
                 boton = tk.Button(self.frame_teclado, text=letra, width=4, command=lambda l=letra: self.adivinar_letra(l))
                 boton.grid(row=i, column=j)
                 self.botones_teclado.append(boton)
+                self.teclas_botones[letra] = boton  # Asocia la tecla con el botón correspondiente
+
+        # Manejar eventos de teclado
+        self.master.bind("<KeyPress>", self.manejar_evento_teclado)
+
+    def manejar_evento_teclado(self, evento):
+        """
+        Maneja el evento de teclado: simula un clic en el botón correspondiente a la tecla presionada.
+        """
+        tecla = evento.char.upper()  # Obtiene la tecla presionada (en mayúsculas)
+        if tecla in self.teclas_botones:
+            boton = self.teclas_botones[tecla]
+            boton.invoke()  # Simula un clic en el botón
 
     def guardar_puntuacion(self):
         nombre_jugador = self.obtener_nombre_jugador()
@@ -340,8 +355,8 @@ class JuegoAhorcado:
                     self.mostrar_clasificacion()  # Mostrar la tabla de clasificación cuando el jugador ha ganado puntos
                 self.reiniciar_juego()
                 return  # Sale del método si no quedan palabras en ninguna categoría
-        except ValueError:
-            print("La palabra no está en la lista.")
+        except ValueError as e:
+            print(f"Error: {e}. La palabra '{palabra_secreta_minuscula}' no está en la lista de la categoría '{self.categoria_actual}'.")
 
         self.letras_adivinadas = []
         self.letras_falladas = []

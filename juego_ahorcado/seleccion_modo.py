@@ -3,6 +3,7 @@ from tkinter import messagebox
 
 from juego_ahorcado.clasificacion import SistemaClasificacion
 from juego_ahorcado.juego import JuegoAhorcado
+from juego_ahorcado.modo_multijugador import ModoMultijugador
 
 
 class SeleccionModo:
@@ -10,7 +11,7 @@ class SeleccionModo:
         self.master = master
         self.master.title("Selección de Modo de Juego")
         self.master.resizable(False, False)
-        self.master.geometry("300x250")
+        self.master.geometry("400x200")
         self.centra_ventana(self.master)
 
         self.crear_widgets()
@@ -28,18 +29,18 @@ class SeleccionModo:
         lbl_modo_juego = tk.Label(self.master, text="Selecciona el modo de juego")
         lbl_modo_juego.pack(pady=5)
 
-        # Botones para seleccionar el modo de juego
-        btn_un_jugador = tk.Button(self.master, text="Un Jugador", command=self.mostrar_opciones_un_jugador)
-        btn_un_jugador.pack(pady=10)
+        # Crear botones para los diferentes modos de juego
+        self.crear_boton("Un Jugador", lambda: self.mostrar_opciones_un_jugador())
+        self.crear_boton("Multijugador", self.iniciar_juego_multijugador)
+        self.crear_boton("Clasificación con tiempo", self.mostrar_clasificacion_con_tiempo)
+        self.crear_boton("Clasificación sin tiempo", self.mostrar_clasificacion_sin_tiempo)
 
-        btn_multijugador = tk.Button(self.master, text="Multijugador (Próximamente)", command=self.iniciar_juego_multijugador)
-        btn_multijugador.pack(pady=10)
+    def crear_boton(self, texto, comando, **kwargs):
+        btn = tk.Button(self.master, text=texto, command=comando, **kwargs)
+        btn.pack()
 
-        btn_clasificacion = tk.Button(self.master, text="Clasificación con tiempo", command=self.mostrar_clasificacion_con_tiempo)
-        btn_clasificacion.pack(pady=10)
-
-        btn_clasificacion = tk.Button(self.master, text="Clasificación sin tiempo", command=self.mostrar_clasificacion_sin_tiempo)
-        btn_clasificacion.pack(pady=10)
+        # Agregar un espacio entre los botones
+        tk.Frame(self.master, height=10).pack()
 
     def mostrar_opciones_un_jugador(self):
         self.master.withdraw()  # Oculta la ventana principal
@@ -66,26 +67,24 @@ class SeleccionModo:
         root.mainloop()
 
     def iniciar_juego_multijugador(self):
-        messagebox.showinfo("Próximamente", "La opción Multijugador estará disponible en futuras versiones.")
+        self.master.destroy()  # Cierra la ventana de selección de modo de juego
+        root = tk.Tk()
+        ModoMultijugador(root)
+        root.mainloop()
+
+    def mostrar_clasificacion(self, con_tiempo):
+        sistema_clasificacion = SistemaClasificacion()
+        sistema_clasificacion.cargar_puntuaciones()
+
+        clasificacion = sistema_clasificacion.obtener_clasificacion(con_tiempo)
+        if clasificacion:
+            clasificacion_str = "\n".join(f"{i + 1}. {nombre}: {puntos}" for i, (nombre, puntos) in enumerate(clasificacion))
+            messagebox.showinfo("Tabla de Clasificación", f"Tabla de Clasificación:\n{clasificacion_str}")
+        else:
+            messagebox.showinfo("Tabla de Clasificación", "Aún no hay puntuaciones para mostrar.")
 
     def mostrar_clasificacion_con_tiempo(self):
-        sistema_clasificacion = SistemaClasificacion()
-        sistema_clasificacion.cargar_puntuaciones()
-
-        clasificacion = sistema_clasificacion.obtener_clasificacion(con_tiempo=True)
-        if clasificacion:
-            clasificacion_str = "\n".join(f"{i + 1}. {nombre}: {puntos}" for i, (nombre, puntos) in enumerate(clasificacion))
-            messagebox.showinfo("Tabla de Clasificación", f"Tabla de Clasificación:\n{clasificacion_str}")
-        else:
-            messagebox.showinfo("Tabla de Clasificación", "Aún no hay puntuaciones para mostrar.")
+        self.mostrar_clasificacion(con_tiempo=True)
 
     def mostrar_clasificacion_sin_tiempo(self):
-        sistema_clasificacion = SistemaClasificacion()
-        sistema_clasificacion.cargar_puntuaciones()
-
-        clasificacion = sistema_clasificacion.obtener_clasificacion(con_tiempo=False)
-        if clasificacion:
-            clasificacion_str = "\n".join(f"{i + 1}. {nombre}: {puntos}" for i, (nombre, puntos) in enumerate(clasificacion))
-            messagebox.showinfo("Tabla de Clasificación", f"Tabla de Clasificación:\n{clasificacion_str}")
-        else:
-            messagebox.showinfo("Tabla de Clasificación", "Aún no hay puntuaciones para mostrar.")
+        self.mostrar_clasificacion(con_tiempo=False)
