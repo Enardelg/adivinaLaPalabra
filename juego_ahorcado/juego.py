@@ -28,6 +28,7 @@ class JuegoAhorcado:
         self.categoria_actual, self.palabra_secreta = self.elegir_palabra()  # Selecciona una palabra al azar para el juego
         self.letras_adivinadas = []  # Lista para almacenar las letras que han sido adivinadas correctamente
         self.letras_falladas = []  # Lista para almacenar las letras que han sido incorrectamente propuestas
+        self.letra_desbloqueada = False
         self.fallos = 0  # Contador de los fallos del jugador
         self.puntos = 0  # Puntuación del jugador
         self.acumular_puntos_fallos = 0  # Contador para llevar un registro acumulado de los puntos de los fallos
@@ -57,8 +58,8 @@ class JuegoAhorcado:
     def inicializar_ventana(self):
         self.master.title("El Ahorcado")
         self.master.resizable(False, False)
-        self.master.minsize(400, 250)
-        self.master.maxsize(400, 250)
+        self.master.minsize(400, 300)
+        self.master.maxsize(400, 300)
         self.centra_ventana()
 
     def centra_ventana(self):
@@ -70,30 +71,30 @@ class JuegoAhorcado:
         self.master.geometry(f"{width}x{height}+{x}+{y}")
 
     def configurar_interfaz(self):
-        # Etiqueta para mostrar la categoría
-        self.label_categoria = tk.Label(self.master, text="Categoría - " + self.categoria_actual)
-        self.label_categoria.grid(row=0, column=0, columnspan=4, padx=10, pady=5)
-
-        # Etiqueta para mostrar la palabra oculta
-        self.label_palabra = tk.Label(self.master, text=self.mostrar_palabra_oculta())
-        self.label_palabra.grid(row=1, column=0, columnspan=4, padx=10, pady=10)
-
-        # Etiqueta para mostrar el número de fallos
-        self.label_fallos = tk.Label(self.master, text=f"Fallos: {self.fallos}/8")
-        self.label_fallos.grid(row=1, column=0, padx=10, pady=10, sticky="w")
-
-        # Etiqueta para mostrar las letras falladas
-        self.label_letras_falladas = tk.Label(self.master, text="")
-        self.label_letras_falladas.grid(row=2, column=0, columnspan=4, padx=10, pady=10)
-
         # Etiqueta para mostrar los puntos
         self.label_puntos = tk.Label(self.master, text=f"Puntos: {self.puntos}")
         self.label_puntos.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+        # Etiqueta para mostrar la categoría
+        self.label_categoria = tk.Label(self.master, text="Categoría - " + self.categoria_actual)
+        self.label_categoria.grid(row=0, column=0, columnspan=4, padx=10, pady=5)
 
         if self.con_tiempo:
             # Etiqueta para mostrar el tiempo transcurrido
             self.label_tiempo = tk.Label(self.master, text="Tiempo: 1:00")
             self.label_tiempo.grid(row=0, column=3, padx=10, pady=10, sticky="e")
+
+        # Etiqueta para mostrar el número de fallos
+        self.label_fallos = tk.Label(self.master, text=f"Fallos: {self.fallos}/8")
+        self.label_fallos.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+
+        # Etiqueta para mostrar la palabra oculta
+        self.label_palabra = tk.Label(self.master, text=self.mostrar_palabra_oculta())
+        self.label_palabra.grid(row=1, column=0, columnspan=4, padx=10, pady=10)
+
+        # Etiqueta para mostrar las letras falladas
+        self.label_letras_falladas = tk.Label(self.master, text="")
+        self.label_letras_falladas.grid(row=2, column=0, columnspan=4, padx=10, pady=10)
 
         # Frame para los botones del teclado
         self.frame_teclado = tk.Frame(self.master)
@@ -110,8 +111,79 @@ class JuegoAhorcado:
                 self.botones_teclado.append(boton)
                 self.teclas_botones[letra] = boton  # Asocia la tecla con el botón correspondiente
 
+        # Botón de ayuda
+        self.boton_ayuda = tk.Button(self.master, text="Ayuda", command=self.mostrar_ayuda)
+        self.boton_ayuda.grid(row=5, column=0, columnspan=4, pady=10)
+
         # Manejar eventos de teclado
         self.master.bind("<KeyPress>", self.manejar_evento_teclado)
+
+    def mostrar_ayuda(self):
+        equivalencias = {
+            'Á': 'A',
+            'É': 'E',
+            'Í': 'I',
+            'Ó': 'O',
+            'Ú': 'U',
+        }
+
+        if self.puntos < 25:
+            messagebox.showinfo("Ayuda", "No tienes suficientes puntos para obtener ayuda.")
+            return
+
+        # Seleccionar una letra aleatoria que no haya sido adivinada aún
+        letras_disponibles = [letra for letra in self.palabra_secreta if letra not in self.letras_adivinadas]
+        letras_disponibles_sin_espacio = [letra for letra in letras_disponibles if letra != " "]  # Filtrar los espacios
+
+        letras_desbloquear = []  # Lista para almacenar todas las letras a desbloquear
+
+        # Convertir todas las letras disponibles a su forma sin tilde
+        letras_disponibles_sin_tilde = [unidecode.unidecode(letra) for letra in letras_disponibles_sin_espacio]
+
+        if letras_disponibles_sin_tilde:
+            letra_ayuda_sin_tilde = random.choice(letras_disponibles_sin_tilde)
+            # Encontrar la letra original correspondiente con tilde
+            letra_ayuda = letras_disponibles_sin_espacio[letras_disponibles_sin_tilde.index(letra_ayuda_sin_tilde)]
+
+            # Si la letra desbloqueada tiene tilde, también desbloquea la correspondiente sin tilde
+            if letra_ayuda in equivalencias:
+                letra_sin_tilde = equivalencias[letra_ayuda]
+                if letra_sin_tilde in self.palabra_secreta and letra_sin_tilde not in self.letras_adivinadas:
+                    letras_desbloquear.append(letra_sin_tilde)
+            # Si la letra desbloqueada es una vocal sin tilde, desbloquea también la vocal con tilde
+            elif letra_ayuda in equivalencias.values():
+                letra_con_tilde = list(equivalencias.keys())[list(equivalencias.values()).index(letra_ayuda)]
+                if letra_con_tilde in self.palabra_secreta and letra_con_tilde not in self.letras_adivinadas:
+                    letras_desbloquear.append(letra_con_tilde)
+        else:
+            letra_ayuda = random.choice(letras_disponibles)
+
+        # Actualizar la lista de letras adivinadas y la interfaz gráfica
+        self.letras_adivinadas.append(letra_ayuda)
+        for letra in letras_desbloquear:
+            self.letras_adivinadas.append(letra)
+        self.actualizar_interfaz()
+
+        # Descontar 25 puntos
+        self.puntos -= 25
+        self.label_puntos.config(text=f"Puntos: {self.puntos}")
+
+        # Marcar que se ha desbloqueado una letra para esta palabra
+        self.letra_desbloqueada = True
+
+        # Deshabilitar el botón correspondiente a la letra desbloqueada
+        if letra_ayuda in self.teclas_botones:
+            boton_desbloqueado = self.teclas_botones[letra_ayuda]
+            boton_desbloqueado.config(state="disabled", bg="lightgray")
+
+        if self.letra_desbloqueada:
+            self.boton_ayuda.config(state="disabled", bg="lightgray")
+
+        if len(self.letras_adivinadas) == len(set(self.palabra_secreta)):
+            self.ganar()
+            return
+
+        print(f"Se ha desbloqueado la letra '{letra_ayuda}' a cambio de 25 puntos.")
 
     def manejar_evento_teclado(self, evento):
         """
@@ -360,11 +432,13 @@ class JuegoAhorcado:
 
         self.letras_adivinadas = []
         self.letras_falladas = []
+        self.letra_desbloqueada = False
         self.fallos = 0
         self.acumular_puntos_fallos = 0
         self.tiempo_inicio = time.time()
         self.categoria_actual, self.palabra_secreta = self.elegir_palabra()
         self.actualizar_interfaz()
+        self.boton_ayuda.config(state="normal", bg="SystemButtonFace")
         self.restaurar_botones()
         # Actualiza la etiqueta de la categoría con la nueva categoría seleccionada
         self.label_categoria.config(text="Categoría - " + self.categoria_actual)
@@ -376,6 +450,7 @@ class JuegoAhorcado:
         # Reinicia los atributos del juego
         self.letras_adivinadas = []
         self.letras_falladas = []
+        self.letra_desbloqueada = False
         self.fallos = 0
         self.puntos = 0
         self.acumular_puntos_fallos = 0
