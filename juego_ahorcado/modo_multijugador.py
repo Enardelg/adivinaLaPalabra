@@ -29,8 +29,19 @@ class ModoMultijugador:
         lbl_instruccion = tk.Label(self.master, text="Ingresa la palabra para que otro jugador la adivine")
         lbl_instruccion.pack(pady=5)
 
-        self.entry_palabra = tk.Entry(self.master)
-        self.entry_palabra.pack(pady=5)
+        # Frame para contener el Entry y el Checkbutton
+        frame_entrada = tk.Frame(self.master)
+        frame_entrada.pack(pady=5)
+
+        self.entry_palabra = tk.Entry(frame_entrada)
+        self.entry_palabra.pack(side=tk.LEFT)
+
+        self.mostrar_palabra_var = tk.BooleanVar()
+        self.mostrar_palabra_var.set(True)  # Mostrar palabra por defecto
+
+        self.checkbox_mostrar_palabra = tk.Checkbutton(frame_entrada, text="Mostrar palabra", variable=self.mostrar_palabra_var,
+                                                       command=self.actualizar_mostrar_palabra)
+        self.checkbox_mostrar_palabra.pack(side=tk.LEFT)
 
         btn_empezar = tk.Button(self.master, text="Empezar", command=self.iniciar_juego)
         btn_empezar.pack(pady=5)
@@ -45,6 +56,13 @@ class ModoMultijugador:
         else:
             messagebox.showwarning("Error", "Por favor, ingresa una palabra antes de empezar.")
 
-    def manejar_tecla_enter(self):
+    def manejar_tecla_enter(self, event):
         """Maneja el evento de tecla Enter."""
         self.iniciar_juego()
+
+    def actualizar_mostrar_palabra(self):
+        """Actualiza la visibilidad de la palabra en el Entry."""
+        if self.mostrar_palabra_var.get():
+            self.entry_palabra.config(show="")
+        else:
+            self.entry_palabra.config(show="*")
