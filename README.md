@@ -10,3 +10,4 @@ Este juego de te desafía a **adivinar** una **palabra oculta** antes de que se 
 3. Abre una terminal y navega hasta el directorio del proyecto.  
 4. Ejecuta el comando `pip install -r requirements.txt` para instalar las dependencias necesarias.
 5. Ejecuta el comando `python main.py` para iniciar el juego.
+6. Luego solo muevete a la carpeta `dist` y ejecuta el main, `se espera visualizar una alerta , puedes ejecutarlo de todas formas con total confianza.`
