@@ -12,6 +12,17 @@ from juego_ahorcado.palabras import CATEGORIAS_PALABRAS, CATEGORIAS_PALABRAS_ORI
 
 
 class JuegoAhorcado:
+    def obtener_arte_ascii(self):
+        return (
+            " _   _                                          \n"
+            "| | | |                                         \n"
+            "| |_| | __ _ _ __   __ _ _ __ ___   __ _ _ __  \n"
+            "|  _  |/ _` | '_ \\ / _` | '_ ` _ \\ / _` | '_ \\ \n"
+            "| | | | (_| | | | | (_| | | | | | | (_| | | | |\n"
+            "\\_| |_/\\__,_|_| |_|\\__, |_| |_| |_|\\__,_|_| |_|\n"
+            "                    __/ |                      \n"
+        )
+
     def __init__(self, master, con_tiempo):
         """
         Inicializa la ventana del juego y los atributos del juego.
@@ -56,20 +67,99 @@ class JuegoAhorcado:
             self.tiempo_limite = 0
 
     def inicializar_ventana(self):
-        self.master.title("El Ahorcado")
+        self.master.title("Adivina la Palabra")
         self.master.resizable(False, False)
-        self.master.minsize(400, 300)
-        self.master.maxsize(400, 300)
+        self.master.minsize(400, 460)
         self.centra_ventana()
 
     def centra_ventana(self):
-        self.master.update_idletasks()
-        width = self.master.winfo_width()
-        height = self.master.winfo_height()
-        x = (self.master.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.master.winfo_screenheight() // 2) - (height // 2)
-        self.master.geometry(f"{width}x{height}+{x}+{y}")
-
+    # Primero define las figuras del ahorcado
+        self.figuras_ahorcado = [
+        """
+         +---+
+         |   |
+             |
+             |
+             |
+             |
+        =========""",
+        """
+         +---+
+         |   |
+         O   |
+             |
+             |
+             |
+        =========""",
+        """
+         +---+
+         |   |
+         O   |
+         |   |
+             |
+             |
+        =========""",
+        """
+         +---+
+         |   |
+         O   |
+        /|   |
+             |
+             |
+        =========""",
+        """
+         +---+
+         |   |
+         O   |
+        /|\  |
+             |
+             |
+        =========""",
+        """
+         +---+
+         |   |
+         O   |
+        /|\  |
+        /    |
+             |
+        =========""",
+        """
+         +---+
+         |   |
+         O   |
+        /|\  |
+        / \  |
+             |
+        =========""",
+        """
+         +---+
+         |   |
+        [O   |
+        /|\  |
+        / \  |
+             |
+        ========="""
+    ]
+    
+    # Luego crea el label con la figura inicial
+        self.label_figura = tk.Label(
+            self.master, 
+            text=self.figuras_ahorcado[0], 
+            font=("Courier New", 12),
+            justify="center",
+            anchor="nw"
+        )
+        self.label_figura.grid(row=3, column=0, columnspan=4, sticky="nw", padx=20, pady=10)
+    
+    # Configuración del tamaño y posición de la ventana
+        initial_width = 400
+        initial_height = 550
+        screen_width = self.master.winfo_screenwidth()
+        screen_height = self.master.winfo_screenheight()
+        x = (screen_width // 2) - (initial_width // 2)
+        y = (screen_height // 2) - (initial_height // 2)
+        self.master.geometry(f"{initial_width}x{initial_height}+{x}+{y}")
+        
     def configurar_interfaz(self):
         # Etiqueta para mostrar los puntos
         self.label_puntos = tk.Label(self.master, text=f"Puntos: {self.puntos}")
@@ -110,6 +200,10 @@ class JuegoAhorcado:
                 boton.grid(row=i, column=j)
                 self.botones_teclado.append(boton)
                 self.teclas_botones[letra] = boton  # Asocia la tecla con el botón correspondiente
+
+        self.label_arte = tk.Label(self.master, text=self.obtener_arte_ascii(), font=("Courier", 8), justify="left")
+        self.label_arte.grid(row=6, column=0, columnspan=4)
+        self.master.after(3000, self.label_arte.destroy)
 
         # Botón de ayuda
         self.boton_ayuda = tk.Button(self.master, text="Ayuda", command=self.mostrar_ayuda)
@@ -304,6 +398,7 @@ class JuegoAhorcado:
                     self.puntos += 1
 
         self.actualizar_interfaz()
+        self.label_figura.config(text=self.figuras_ahorcado[min(self.fallos, len(self.figuras_ahorcado)-1)])
 
         # Comprobar si el jugador ha perdido o ganado después de cada intento
         if self.fallos == 8:
@@ -405,11 +500,12 @@ class JuegoAhorcado:
         """
         Continúa el juego con una nueva palabra secreta y restablece los atributos del juego.
         """
-        # Convierte la primera letra de cada palabra de la palabra secreta en mayúscula
+    # Convierte la primera letra de cada palabra de la palabra secreta en mayúscula
         palabras_secreta_lista = self.palabra_secreta.split()
         palabras_secreta_minuscula = [palabra[0].upper() + palabra[1:].lower() for palabra in palabras_secreta_lista]
         palabra_secreta_minuscula = " ".join(palabras_secreta_minuscula)
-        # Elimina la palabra acertada del diccionario de categorías
+        
+    # Elimina la palabra acertada del diccionario de categorías
         try:
             CATEGORIAS_PALABRAS[self.categoria_actual].remove(palabra_secreta_minuscula)
             # Si no hay más palabras en la categoría, elimina la categoría del diccionario
@@ -421,55 +517,71 @@ class JuegoAhorcado:
                     puntajes_actuales = [puntuacion for _, puntuacion in self.sistema_clasificacion.obtener_clasificacion(self.con_tiempo)]
                     peor_puntaje = min(puntajes_actuales)
                     if self.puntos > peor_puntaje or len(puntajes_actuales) < self.sistema_clasificacion.max_puntuaciones:
-                        self.guardar_puntuacion()  # Guardar la puntuación cuando el jugador gana puntos
+                        self.guardar_puntuacion()
                     else:
                         messagebox.showinfo("¡Puntos insuficientes!", "No tienes suficientes puntos para entrar en el top 10.")
-                    self.mostrar_clasificacion()  # Mostrar la tabla de clasificación cuando el jugador ha ganado puntos
+                    self.mostrar_clasificacion()
                 self.reiniciar_juego()
-                return  # Sale del método si no quedan palabras en ninguna categoría
+                return
         except ValueError as e:
             print(f"Error: {e}. La palabra '{palabra_secreta_minuscula}' no está en la lista de la categoría '{self.categoria_actual}'.")
 
+    # Reiniciar variables del juego
         self.letras_adivinadas = []
         self.letras_falladas = []
         self.letra_desbloqueada = False
         self.fallos = 0
         self.acumular_puntos_fallos = 0
-        self.tiempo_inicio = time.time()
+        
+        # Reiniciar la figura del ahorcado
+        self.label_figura.config(text=self.figuras_ahorcado[0])
+        
+        # Obtener nueva palabra
         self.categoria_actual, self.palabra_secreta = self.elegir_palabra()
+        
+        # Reiniciar tiempo si es modo con tiempo
+        if self.con_tiempo:
+            self.tiempo_inicio = time.time()
+        
+        # Actualizar interfaz
         self.actualizar_interfaz()
         self.boton_ayuda.config(state="normal", bg="SystemButtonFace")
         self.restaurar_botones()
-        # Actualiza la etiqueta de la categoría con la nueva categoría seleccionada
         self.label_categoria.config(text="Categoría - " + self.categoria_actual)
 
     def reiniciar_juego(self):
         """
         Reinicia el juego con todas las palabras y categorías nuevamente.
         """
-        # Reinicia los atributos del juego
+        # Reiniciar variables del juego
         self.letras_adivinadas = []
         self.letras_falladas = []
         self.letra_desbloqueada = False
         self.fallos = 0
         self.puntos = 0
         self.acumular_puntos_fallos = 0
-        # Reinicia el sistema de clasificación
+        
+        # Reiniciar la figura del ahorcado
+        self.label_figura.config(text=self.figuras_ahorcado[0])
+        
+        # Reiniciar sistema de clasificación
         self.sistema_clasificacion = SistemaClasificacion()
-        # Cargar las puntuaciones guardadas
         self.sistema_clasificacion.cargar_puntuaciones()
-        # Reinicia el tiempo
-        self.tiempo_inicio = time.time()
-        # Copia profunda de las categorías y palabras originales
+        
+        # Reiniciar tiempo
+        if self.con_tiempo:
+            self.tiempo_inicio = time.time()
+        
+        # Restaurar palabras originales
         categorias_palabras_originales_copia = copy.deepcopy(CATEGORIAS_PALABRAS_ORIGINALES)
-        # Copia las categorías y palabras originales de vuelta a CATEGORIAS_PALABRAS
         CATEGORIAS_PALABRAS.clear()
         CATEGORIAS_PALABRAS.update(categorias_palabras_originales_copia)
-        # Elige una nueva palabra secreta
+        
+        # Obtener nueva palabra
         self.categoria_actual, self.palabra_secreta = self.elegir_palabra()
-        # Actualiza la interfaz gráfica
+        
+        # Actualizar interfaz
         self.actualizar_interfaz()
-        # Restaura los botones del teclado
         self.restaurar_botones()
 
     def actualizar_tiempo(self):
